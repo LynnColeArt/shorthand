@@ -1,0 +1,12 @@
+# Cookies
+Cookie is a piece of information that your web application can send to client browser. The client browser keeps the cookie in persistent storage \(disk file\) and sends it back to your site or other site in your domain whenever it makes HTTP request to your Web site. The original idea behind cookies was to store some persistent information on the client side that would allow Web server applications to customize their response based on this information.   
+  
+For example, CNN.com news web site uses cookies to provide appropirate regional edition based on previously selected preference. Normally, when you type `www.cnn.com` in your browser, you are taken to the U.S. edition. If you prefer to view European edition, you choose corresponding option, and they store a persistent cookie in your browser that describes this preference. After that, every time you type `www.cnn.com` or just `cnn.com` in your browser, it sends this cookie as a part of HTTP request. The server detects this cookie and authomatically redirects you to `europe.cnn.com`.   
+  
+Yahoo Mail\! and other web-based e-mail providers have an option to "remember login name and password". If you choose this option, once they authenticate you, they store special cookie in your browser that will tell the server that you wish to skip login process and have already provided valid name and password. Next time you type mail.yahoo.com in your browser, you will be taken directly to you inbox bypassing authentication screen.   
+  
+In ShortHand, incoming cookie support is provided by [GetCookie](builtin.getcookie.md) function, which returns value of particular cookie received by server from client browser as part of HTTP request.  
+  
+[Cookie](object.cookie.md) object together with [SetCookie](builtin.setcookie.md) built-in function provide convenient way to manipulate ougoing cookies - those that being sent to client browser as part of HTTP response.   
+  
+From the application point of view, incoming cookies and outgoing cookies are entirely different things, and they are being dealt with using different functions. For incoming cookies, you can only tell whether or not a cookie with some name has been sent to your server application, and if yes, what is its value \(name and value is the only information that we know about incoming cookie from HTTP request\). For outgoing cookies, you can a specify all characteristics, like expiration date, domain, path, etc. Manual page for [Cookie](object.cookie.md) object contains detailed description of all these fields.

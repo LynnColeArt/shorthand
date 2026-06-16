@@ -1,111 +1,64 @@
-# short
+# ShortHand
 
-Zig scaffold for the ShortHand revival experiment.
+ShortHand was a server-side scripting language for dynamic web pages. It lived in the era when CGI was normal, Apache module deployment mattered, and web apps often shipped as a single self-contained script plus a manual.
 
-Preferred source extension:
-- `.short`
+This repository is a Zig-powered revival experiment. The goal is to preserve the original language and runtime behavior as faithfully as possible, then add modern safety features as explicit opt-ins instead of quietly rewriting the language underneath old code.
 
-Legacy aliases kept for compatibility:
-- `.tran`
-- `.shh`
-- `.shl`
+## Why This Exists
 
-## Layout
+The original ShortHand was built to make web scripting easier to learn, easier to deploy, and easier to ship across hosts. The archived manual describes support for:
 
-- `src/root.zig`: package root and module re-exports
-- `src/main.zig`: CLI entrypoint for the runtime
-- `src/lexer.zig`: tokenization boundary
-- `src/ast.zig`: syntax tree shapes
-- `src/parser.zig`: parser boundary
-- `src/cgi.zig`: CGI environment adapter
-- `src/runtime.zig`: execution boundary and host contract
-- `src/deployment.zig`: deployment profile and server metadata
-- `src/request.zig`: request-scoped state
-- `src/response.zig`: response state and header timing
-- `src/value.zig`: legacy value model
-- `src/render.zig`: output and HTML escaping
-- `src/builtins.zig`: built-in dispatch surface
-- `tests/smoke.zig`: small compile-and-run checks
-- `examples/hello.short`: starter example
+- embedded script tags inside HTML
+- CGI, Apache, IIS, and Aprelium/Abyss deployment
+- MySQL and ODBC
+- cookies, file I/O, SMTP, dates, and string helpers
+- a small object model with built-in `File`, `Cookie`, `Connection`, `RecordSet`, `DDL`, and `SMTP` types
 
-## Commands
+That combination made it practical for the kind of small, fast-moving web apps that were common in the early 2000s. This repo keeps that spirit, but in a form that is easier to read, test, and evolve.
 
-- `zig build`
-- `zig build run -- help`
-- `zig build run -- lex examples/hello.short`
-- `zig build run -- parse examples/hello.short`
-- `zig build run -- cgi`
-- `zig build run -- run examples/hello.short`
-- `zig build run -- --strict run examples/hello.short`
-- `zig build test`
+## What We Kept
 
-## Direction
+- Preferred source extension: `.short`
+- Legacy aliases: `.tran`, `.shh`, `.shl`
+- Manual-first compatibility rules
+- CGI-style execution as the baseline deployment model
+- Aprelium/Abyss Web Server as a first-class compatibility target
+- Apache compatibility as a current target
 
-The first pass should stay interpreter-first:
-- lex
-- parse
-- execute
-- then optimize
+## What Changed
 
-That keeps the experiment faithful to the old language while leaving room for a modern host and safer defaults later.
+- The interpreter is written in Zig instead of Flex/Bison plus C/C++
+- The runtime is structured around explicit request, response, and deployment state
+- Strict mode is opt-in and preserves legacy loose coercion by default
+- Regex is available as a separate modern extension API
+- The file object, dates, text helpers, numeric helpers, and database compatibility layer are all being rebuilt against the manual
 
-Deployment compatibility target:
-- Aprelium/Abyss Web Server
+## Repository Layout
 
-Runtime contract:
-- `DeploymentProfile` identifies the host flavor and server metadata.
-- `RequestContext` carries request facts only.
-- `ResponseState` tracks status, body start, and header mutability separately.
-- `Runtime` groups those pieces together so CGI, Apache, and Abyss adapters can share one execution model.
+- `src/`: Zig implementation of the lexer, parser, runtime, and compatibility layers
+- `tests/`: smoke tests and compatibility checks
+- `examples/`: sample `.short` files
+- `docs/manual/`: Markdown republish of the archived help manual
+- `shorthand.feature-map.md`: working feature map distilled from the manual
+- `shorthand.chm`: original archived Windows help file
 
-Response behavior:
-- `header()` mutates metadata until headers are committed.
-- `SetCookie()` serializes cookie state into `Set-Cookie` response lines.
-- `redirect()` sets a 302 response and appends a `Location` header.
-- Header mutations stop once the body begins or headers are emitted.
+## Build And Run
 
-Strict mode:
-- Legacy coercion stays the default.
-- `--strict` enables opt-in type checks for arithmetic, comparisons, and boolean contexts.
-- In strict mode, response-control APIs reject silent coercion at the emission boundary.
+```bash
+zig build
+zig build test
+zig build run -- help
+zig build run -- run examples/hello.short
+zig build run -- --strict run examples/hello.short
+```
 
-Regex extension:
-- `regexmatch(pattern, subject)` uses PCRE2/Perl-style syntax and returns a boolean.
-- `regexreplace(pattern, replacement, subject)` applies global replacements and supports `$1` and `${name}` captures.
-- `regexextract(pattern, subject, [group])` returns the first match or an optional capture.
-- `regexcapture(...)` is an alias for `regexextract(...)`.
-- PHP-style aliases `preg_match` and `preg_replace` are accepted too.
+## Documentation
 
-Core text helpers:
-- `string(value)` forces an explicit string conversion.
-- `format(number, precision)` formats numbers with fixed decimals.
-- `replace(source, pattern, replacement)` performs case-sensitive global string replacement.
-- `translate(source, ch1, ch2)` replaces one byte with another.
-- `strpos(source, pattern)` returns a zero-based offset or `-1`.
-- `lc(string)` and `uc(string)` fold ASCII case for legacy byte-oriented scripts.
+- [Manual index](docs/manual/index.md)
+- [Project notes and feature map](shorthand.feature-map.md)
 
-Numeric helpers:
-- `max(...)` and `min(...)` compare values numerically and preserve float results when a float wins.
-- `rand()` returns a nonnegative integer across the full legacy range.
-- `rand(maximum)` returns a value from `0` through `maximum`.
-- `rand(minimum, maximum)` returns a value within the inclusive range, regardless of argument order.
+## Current Status
 
-Date / time helpers:
-- `date(year, month, day)` builds a midnight date from calendar parts.
-- `date(string)` parses legacy date and timestamp forms.
-- `FormatDate(d, format)` uses strftime-style tokens to render a date value.
-- `now()`, `AddHours()`, `AddMinutes()`, and `AddSeconds()` operate on epoch-second date values.
+This is a working revival, not a finished product. The language core is being rebuilt against the manual as the source of truth, and the modern additions are being kept separate so they do not overwrite the old behavior by accident.
 
-File helpers:
-- `FileExists(name)` returns `true` for readable files and `false` otherwise.
-- `FileSize(filename)` returns a byte count or `-1` if the file cannot be read.
-
-File objects:
-- `new File(FileName [, OpenMode])` opens immediately and stores any open failure in `error` instead of raising.
-- Default open mode is `"r"`.
-- Supported open modes follow the legacy `fopen`-style set: `r`, `r+`, `w`, `w+`, `a`, `a+`.
-- `read([count])` returns up to `count` bytes, or the whole remaining file when omitted or zero, and truncates at the first NUL byte.
-- `readln()` reads through newline boundaries and strips a trailing `\r` before `\n`.
-- `write(data [, length])` returns the number of bytes written.
-- `close()`, `eof()`, and `rewind()` behave like the legacy file object.
-- `name`, `mode`, and `error` are exposed as properties.
+If you are looking for the shortest summary: this is an attempt to make ShortHand feel like ShortHand again, while still being usable on a modern host.
