@@ -436,6 +436,26 @@ test "connection properties expose backend and freshness state" {
     try std.testing.expectEqualStrings("mysql|1|true", body_writer.buffered());
 }
 
+test "sqlite connections route through the sqlite adapter" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\conn = new Connection("sqlite", "")
+        \\core = new Recordset(conn, "Select * from cart_configuration")
+        \\core.execute()
+        \\core.next()
+        \\~><%= conn.backend %>|<%= core.count %>|<%= conn.stale %>
+    ;
+
+    var body_buf: [128]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("sqlite|1|false", body_writer.buffered());
+}
+
 test "runtime regex match supports Perl-style flags" {
     var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
     defer runtime.deinit();

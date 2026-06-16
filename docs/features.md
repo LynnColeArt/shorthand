@@ -66,7 +66,7 @@ The runtime currently ships with the familiar helper set from the manual, plus t
 - The connection string can carry lifecycle policy hints like `backend=`, `driver=`, `auto_refresh=`, `reconnect=`, `idle_timeout=`, and `max_age=`
 - `Connection.backend`, `Connection.opened`, `Connection.last_used`, `Connection.last_refresh`, `Connection.refresh_count`, and `Connection.stale` expose that lifecycle state to scripts
 - `RecordSet.execute()` and `DDL.execute()` consult the connection freshness contract before they run
-- The current build still uses the bundled legacy compatibility backend; the interface is shaped so SQLite, ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters can plug in later
+- The current build routes `sqlite` to the SQLite adapter and falls back to the bundled legacy compatibility backend for other labels; the interface is shaped so ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters can plug in later
 
 ## Objects
 

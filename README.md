@@ -19,7 +19,7 @@ That combination made it practical for the kind of small, fast-moving web apps t
 Connections in the revival still look like the old objects from script, but the runtime now tracks their open and last-used times so the backend can refresh long-lived sessions on its own.
 
 You can also inspect `Connection.backend`, `Connection.opened`, `Connection.last_used`, `Connection.last_refresh`, `Connection.refresh_count`, and `Connection.stale` from scripts when you want to see what the backend is doing.
-The current build still uses the bundled legacy compatibility backend, but it preserves the driver name, connection string, and lifecycle policy so future SQLite, ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters can fit behind the same ShortHand surface.
+The current build routes `sqlite` to the SQLite adapter and falls back to the bundled legacy compatibility backend for other driver labels. It still preserves the driver name, connection string, and lifecycle policy so future ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters can fit behind the same ShortHand surface.
 
 ## What We Kept
 
@@ -36,7 +36,7 @@ The current build still uses the bundled legacy compatibility backend, but it pr
 - The interpreter is written in Zig instead of Flex/Bison plus C/C++
 - The runtime is structured around explicit request, response, and deployment state
 - The data layer keeps backend-agnostic connection metadata and refresh policy in the runtime
-- The active build still uses the bundled compatibility backend, while the runtime keeps backend-agnostic connection metadata and refresh policy ready for future adapters
+- The active build routes `sqlite` to the SQLite adapter and falls back to the bundled compatibility backend for other driver labels, while the runtime keeps backend-agnostic connection metadata and refresh policy ready for future adapters
 - Strict mode is opt-in and preserves legacy loose coercion by default
 - Regex helpers are available as part of the runtime
 - The file object, dates, text helpers, numeric helpers, container helpers, and database layer are all being rebuilt against the manual

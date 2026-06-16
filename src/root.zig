@@ -1,7 +1,9 @@
 pub const project_name = "short";
 
 pub const cgi = @import("cgi.zig");
-pub const db = @import("db2.zig");
+pub const db = @import("dbrouter.zig");
+pub const dblegacy = @import("db2.zig");
+pub const dbsqlite = @import("db.zig");
 pub const dbspec = @import("dbspec.zig");
 pub const deployment = @import("deployment.zig");
 pub const ast = @import("ast.zig");

@@ -209,7 +209,7 @@ Key database behaviors:
 - `Connection` objects are constructed with a driver name and connection string
 - Connection lifetimes are backend-managed, with idle/max-age policy parsed from the connection string when present
 - Connection status is script-visible for debugging and diagnostics
-- The current build still uses the bundled compatibility backend, but the connection contract is shaped for SQLite, ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters later
+- The current build routes `sqlite` to the SQLite adapter and falls back to the bundled compatibility backend for other labels, while preserving the same connection contract for future ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters
 - `RecordSet` is for statements that return rows
 - `DDL` is for statements that do not return rows
 - Parameter substitution supports:

@@ -23,6 +23,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     exe.root_module.linkSystemLibrary("pcre2-8", .{});
+    exe.root_module.linkSystemLibrary("sqlite3", .{});
     b.installArtifact(exe);
 
     const run_step = b.step("run", "Run the short CLI");
@@ -46,6 +47,7 @@ pub fn build(b: *std.Build) void {
         .root_module = smoke_mod,
     });
     smoke_tests.root_module.linkSystemLibrary("pcre2-8", .{});
+    smoke_tests.root_module.linkSystemLibrary("sqlite3", .{});
     const run_smoke_tests = b.addRunArtifact(smoke_tests);
 
     const test_step = b.step("test", "Run tests");

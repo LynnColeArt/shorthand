@@ -222,15 +222,15 @@ pub fn createConnection(allocator: std.mem.Allocator, driver: []const u8, connec
     };
     errdefer state.deinit(allocator);
 
-    var raw_db: *sqlite.sqlite3 = undefined;
-    const pp_db: [*c]*sqlite.sqlite3 = @ptrCast(&raw_db);
+    var raw_db: ?*sqlite.sqlite3 = null;
+    const pp_db: [*c]?*sqlite.sqlite3 = @ptrCast(&raw_db);
     const rc = sqlite.sqlite3_open(":memory:", pp_db);
     if (rc != sqlite.SQLITE_OK) {
-        if (@intFromPtr(raw_db) != 0) _ = sqlite.sqlite3_close(raw_db);
+        if (raw_db) |db| _ = sqlite.sqlite3_close(db);
         return error.SqliteError;
     }
 
-    state.db = raw_db;
+    state.db = raw_db.?;
     try loadLegacyDatabase(allocator, state.db.?);
     state.markOpened(dbspec.currentUnixSeconds());
     return .{ .kind = .connection, .ptr = state };
@@ -467,6 +467,7 @@ pub fn deinitObject(allocator: std.mem.Allocator, object: value.ObjectValue) voi
         .recordset => {
             const state = @as(*RecordsetState, @ptrCast(@alignCast(object.ptr)));
             clearRows(allocator, &state.rows);
+            state.rows.deinit(allocator);
             allocator.free(state.sql);
             allocator.destroy(state);
         },
