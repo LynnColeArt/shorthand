@@ -2,9 +2,11 @@ pub const project_name = "short";
 
 pub const cgi = @import("cgi.zig");
 pub const db = @import("db2.zig");
+pub const dbspec = @import("dbspec.zig");
 pub const deployment = @import("deployment.zig");
 pub const ast = @import("ast.zig");
 pub const builtins = @import("builtins.zig");
+pub const collections = @import("collections.zig");
 pub const date = @import("date.zig");
 pub const fileobj = @import("fileobj.zig");
 pub const lexer = @import("lexer.zig");

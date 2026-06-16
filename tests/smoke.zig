@@ -149,6 +149,29 @@ test "runtime keeps legacy loose typing by default" {
     try std.testing.expectEqualStrings("7", body_writer.buffered());
 }
 
+test "runtime strips shebang before parsing" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
+    defer runtime.deinit();
+
+    const source =
+        \\#!/usr/bin/env short run
+        \\<~
+        \\header("X-Test", "alpha")
+        \\~>hello
+    ;
+
+    var body_buf: [64]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("hello", body_writer.buffered());
+
+    var header_buf: [128]u8 = undefined;
+    var header_writer: std.Io.Writer = .fixed(&header_buf);
+    try runtime.writeHeaders(&header_writer);
+    try std.testing.expectEqualStrings("Content-Type: text/html\r\nX-Test: alpha\r\n\r\n", header_writer.buffered());
+}
+
 test "runtime strict typing rejects implicit numeric coercion" {
     var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{
         .strict_typing = true,
@@ -217,6 +240,116 @@ test "runtime strict typing rejects setcookie coercion" {
     try std.testing.expectError(error.StrictTypeMismatch, runtime.runSource(source, &body_writer));
 }
 
+test "runtime reads request cookies and rewrites them" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{
+        .request = .{
+            .cookie_header = "theme=dark; shorthand_visits=2",
+        },
+    });
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\visits = int(getcookie("shorthand_visits")) + 1
+        \\setcookie(new Cookie("shorthand_visits", string(visits), AddMinutes(now(), 30), "/"))
+        \\~><%= visits %>
+    ;
+
+    var body_buf: [128]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("3", body_writer.buffered());
+
+    var header_buf: [256]u8 = undefined;
+    var header_writer: std.Io.Writer = .fixed(&header_buf);
+    try runtime.writeHeaders(&header_writer);
+    try std.testing.expect(std.mem.indexOf(u8, header_writer.buffered(), "Set-Cookie: shorthand_visits=3; Expires=") != null);
+    try std.testing.expect(std.mem.indexOf(u8, header_writer.buffered(), "; Path=/") != null);
+}
+
+test "runtime browser post echo escapes user input" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{
+        .request = .{
+            .body = "message=Hello+%26+%3CWorld%3E+%22quotes%22+%27apostrophe%27",
+        },
+    });
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\message = urldecode(f("message"))
+        \\safe = replace(replace(replace(replace(message, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "'", "&#39;")
+        \\~><pre><%= safe %></pre>
+    ;
+
+    var body_buf: [256]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings(
+        "<pre>Hello &amp; &lt;World&gt; \"quotes\" &#39;apostrophe&#39;</pre>",
+        body_writer.buffered(),
+    );
+}
+
+test "runtime browser redirect demo stops body output" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{
+        .request = .{
+            .body = "bounce=1",
+        },
+    });
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\if len(urldecode(f("bounce"))) > 0 then
+        \\    redirect("/redirect-complete.short")
+        \\    exit()
+        \\end if
+        \\~>Should not appear
+    ;
+
+    var body_buf: [64]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+    try std.testing.expectEqualStrings("", body_writer.buffered());
+
+    var header_buf: [128]u8 = undefined;
+    var header_writer: std.Io.Writer = .fixed(&header_buf);
+    try runtime.writeHeaders(&header_writer);
+    try std.testing.expect(std.mem.indexOf(u8, header_writer.buffered(), "Status: 302 Found") != null);
+    try std.testing.expect(std.mem.indexOf(u8, header_writer.buffered(), "Location: /redirect-complete.short") != null);
+}
+
+test "runtime browser regex search filters catalog entries" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{
+        .request = .{
+            .query_string = "term=Cookie",
+        },
+    });
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\term = urldecode(q("term"))
+        \\catalog = new Array("Apache virtual host", "Cookie counter", "POST echo", "Redirect bounce")
+        \\matches = 0
+        \\for i = 1 to size(catalog)
+        \\    if regexmatch("(?i)" & term, catalog[i]) then
+        \\        matches = matches + 1
+        \\    end if
+        \\end for
+        \\~><%= matches %>|<%= regexextract("(?i)(" & term & ")", "Cookie counter", 1) %>
+    ;
+
+    var body_buf: [128]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("1|Cookie", body_writer.buffered());
+}
+
 test "runtime can query the legacy cart database" {
     var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
     defer runtime.deinit();
@@ -257,6 +390,52 @@ test "runtime can query the legacy category list" {
     try std.testing.expectEqualStrings("Communication Tools", body_writer.buffered());
 }
 
+test "legacy db connections self-manage refresh policy" {
+    const conn_object = try short.db.createConnection(
+        std.testing.allocator,
+        "MySQL",
+        "database=smoses_secondary;server=localhost;uid=root;pwd=;idle_timeout=0;max_age=0",
+    );
+    defer short.db.deinitObject(std.testing.allocator, conn_object);
+
+    const conn = short.db.connectionFromValue(.{ .object = conn_object }) orelse return error.TestFailure;
+    const before = short.db.connectionStatus(conn);
+    try std.testing.expectEqual(short.dbspec.BackendKind.mysql, before.backend);
+    try std.testing.expectEqual(@as(u64, 0), before.refresh_count);
+    try std.testing.expectEqual(@as(u64, 0), before.policy.idle_timeout_seconds.?);
+    try std.testing.expectEqual(@as(u64, 0), before.policy.max_age_seconds.?);
+
+    const rs_object = try short.db.createRecordset(std.testing.allocator, conn, "Select * from cart_configuration");
+    defer short.db.deinitObject(std.testing.allocator, rs_object);
+
+    const rs = short.db.recordsetFromValue(.{ .object = rs_object }) orelse return error.TestFailure;
+    try short.db.recordsetExecute(rs, std.testing.allocator, &.{});
+
+    const after = short.db.connectionStatus(conn);
+    try std.testing.expectEqual(@as(u64, 1), after.refresh_count);
+    try std.testing.expectEqual(@as(u64, 1), after.generation);
+    try std.testing.expect(after.last_refresh_at >= before.last_refresh_at);
+}
+
+test "connection properties expose backend and freshness state" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\conn = new Connection("MySQL", "database=smoses_secondary;server=localhost;uid=root;pwd=;idle_timeout=0;max_age=0")
+        \\core = new Recordset(conn, "Select * from cart_configuration")
+        \\core.execute()
+        \\~><%= conn.backend %>|<%= conn.refresh_count %>|<%= conn.stale %>
+    ;
+
+    var body_buf: [128]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("mysql|1|true", body_writer.buffered());
+}
+
 test "runtime regex match supports Perl-style flags" {
     var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
     defer runtime.deinit();
@@ -272,6 +451,24 @@ test "runtime regex match supports Perl-style flags" {
     try runtime.runSource(source, &body_writer);
 
     try std.testing.expectEqualStrings("true", body_writer.buffered());
+}
+
+test "runtime regex valid reports compile failures" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\good = regexvalid("(?i)^[a-z]+$")
+        \\bad = regexvalid("(")
+        \\~><%= good %>|<%= bad %>
+    ;
+
+    var body_buf: [128]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("true|false", body_writer.buffered());
 }
 
 test "runtime regex replace supports captures" {
@@ -464,6 +661,101 @@ test "runtime file object supports constructor read write rewind and error state
         "alpha|beta|alpha\r\nbeta|false|true|5|hello|true|true|true|true",
         body_writer.buffered(),
     );
+}
+
+test "runtime arrays use square brackets and management helpers" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\a = new Array(10, 20, 30)
+        \\nested = new Array()
+        \\a[2] = a[2] + 1
+        \\nested[1][1] = 42
+        \\shape_text = shape(a)
+        \\lbound_text = lbound(a)
+        \\ubound_text = ubound(a)
+        \\allocated_text = allocated(a)
+        \\~><%= a[2] %>|<%= size(a) %>|<%= a.count %>|<%= shape_text %>|<%= lbound_text %>|<%= ubound_text %>|<%= allocated_text %>|<%= nested[1][1] %>
+    ;
+
+    var body_buf: [256]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("21|3|3|[3]|[1]|[3]|true|42", body_writer.buffered());
+}
+
+test "runtime maps use square brackets and associative helpers" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\m = new Map("x", 1, "y", 2)
+        \\m["db"]["host"] = "localhost"
+        \\m["db"]["port"] = 5432
+        \\keys_text = keys(m)
+        \\values_text = values(m)
+        \\had_y = contains(m, "y")
+        \\removed = remove(m, "x")
+        \\missing_x = contains(m, "x")
+        \\count_text = m.count
+        \\allocated_text = allocated(m)
+        \\~><%= m["y"] %>|<%= m["db"]["host"] %>|<%= keys_text %>|<%= values_text %>|<%= had_y %>|<%= removed %>|<%= missing_x %>|<%= count_text %>|<%= allocated_text %>
+    ;
+
+    var body_buf: [512]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings(
+        "2|localhost|[\"x\", \"y\", \"db\"]|[1, 2, {\"host\": \"localhost\", \"port\": 5432}]|true|true|false|2|true",
+        body_writer.buffered(),
+    );
+}
+
+test "runtime move_alloc transfers array allocation and deallocates source" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\from = new Array(10, 20, 30)
+        \\to = new Array()
+        \\move_alloc(from, to)
+        \\from_alloc = allocated(from)
+        \\to_alloc = allocated(to)
+        \\~><%= from_alloc %>|<%= size(from) %>|<%= to_alloc %>|<%= size(to) %>|<%= to[2] %>
+    ;
+
+    var body_buf: [128]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("false|0|true|3|20", body_writer.buffered());
+}
+
+test "runtime move_alloc transfers map allocation and deallocates source" {
+    var runtime = short.runtime.Runtime.init(std.testing.io, std.testing.allocator, .{});
+    defer runtime.deinit();
+
+    const source =
+        \\<~
+        \\from = new Map("a", 9)
+        \\to = new Map()
+        \\move_alloc(from, to)
+        \\from_alloc = allocated(from)
+        \\to_alloc = allocated(to)
+        \\~><%= from_alloc %>|<%= size(from) %>|<%= to_alloc %>|<%= size(to) %>|<%= to["a"] %>
+    ;
+
+    var body_buf: [128]u8 = undefined;
+    var body_writer: std.Io.Writer = .fixed(&body_buf);
+    try runtime.runSource(source, &body_writer);
+
+    try std.testing.expectEqualStrings("false|0|true|1|9", body_writer.buffered());
 }
 
 test "cgi adapter maps Apache and Abyss environments" {

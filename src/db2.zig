@@ -1,10 +1,74 @@
 const std = @import("std");
+const dbspec = @import("dbspec.zig");
 const value = @import("value.zig");
 
 const legacy_dump = @embedFile("data/smoses_secondary.sql");
 
+pub const ConnectionStatus = dbspec.ConnectionStatus;
+
 pub const ConnectionState = struct {
     db: LegacyDatabase = .{},
+    spec: dbspec.ConnectionSpec = .{},
+    opened_at: i64 = 0,
+    last_used_at: i64 = 0,
+    last_refresh_at: i64 = 0,
+    generation: u64 = 0,
+    refresh_count: u64 = 0,
+
+    fn markOpened(self: *ConnectionState, now: i64) void {
+        self.opened_at = now;
+        self.last_used_at = now;
+        self.last_refresh_at = now;
+    }
+
+    fn touch(self: *ConnectionState, now: i64) void {
+        self.last_used_at = now;
+    }
+
+    fn elapsedSeconds(now: i64, earlier: i64) u64 {
+        if (now <= earlier) return 0;
+        return @as(u64, @intCast(now - earlier));
+    }
+
+    fn isStale(self: *const ConnectionState, now: i64) bool {
+        if (self.opened_at == 0 or self.last_used_at == 0) return false;
+
+        if (self.spec.policy.idle_timeout_seconds) |idle_timeout| {
+            if (elapsedSeconds(now, self.last_used_at) >= idle_timeout) return true;
+        }
+
+        if (self.spec.policy.max_age_seconds) |max_age| {
+            if (elapsedSeconds(now, self.opened_at) >= max_age) return true;
+        }
+
+        return false;
+    }
+
+    fn refresh(self: *ConnectionState, now: i64) void {
+        self.generation += 1;
+        self.refresh_count += 1;
+        self.last_refresh_at = now;
+        self.touch(now);
+    }
+
+    fn ensureFresh(self: *ConnectionState, allocator: std.mem.Allocator) anyerror!void {
+        const now = dbspec.currentUnixSeconds();
+        if (self.opened_at == 0 or self.last_used_at == 0 or self.last_refresh_at == 0) {
+            self.markOpened(now);
+            return;
+        }
+        if (self.spec.policy.auto_refresh and self.isStale(now)) {
+            self.refresh(now);
+        } else {
+            self.touch(now);
+        }
+        _ = allocator;
+    }
+
+    pub fn deinit(self: *ConnectionState, allocator: std.mem.Allocator) void {
+        self.db.deinit(allocator);
+        self.spec.deinit(allocator);
+    }
 };
 
 const Configuration = struct {
@@ -356,13 +420,14 @@ fn loadFromDump(db: *LegacyDatabase, allocator: std.mem.Allocator) anyerror!void
 }
 
 pub fn createConnection(allocator: std.mem.Allocator, driver: []const u8, connection_string: []const u8) anyerror!value.ObjectValue {
-    _ = driver;
-    _ = connection_string;
-
     const state = try allocator.create(ConnectionState);
     errdefer allocator.destroy(state);
-    state.* = .{};
+    state.* = .{
+        .spec = try dbspec.createConnectionSpec(allocator, driver, connection_string),
+    };
+    errdefer state.deinit(allocator);
     try loadFromDump(&state.db, allocator);
+    state.markOpened(dbspec.currentUnixSeconds());
     return .{ .kind = .connection, .ptr = state };
 }
 
@@ -402,6 +467,22 @@ pub fn ddlFromValue(v: value.Value) ?*DdlState {
     if (v != .object) return null;
     if (v.object.kind != .ddl) return null;
     return @as(*DdlState, @ptrCast(@alignCast(v.object.ptr)));
+}
+
+pub fn connectionStatus(self: *const ConnectionState) ConnectionStatus {
+    const now = dbspec.currentUnixSeconds();
+    return .{
+        .backend = self.spec.backend,
+        .driver_name = self.spec.driver_name,
+        .connection_string = self.spec.connection_string,
+        .opened_at = self.opened_at,
+        .last_used_at = self.last_used_at,
+        .last_refresh_at = self.last_refresh_at,
+        .generation = self.generation,
+        .refresh_count = self.refresh_count,
+        .policy = self.spec.policy,
+        .stale = self.isStale(now),
+    };
 }
 
 fn clearRows(allocator: std.mem.Allocator, rows: *std.ArrayList(Row)) void {
@@ -811,6 +892,7 @@ fn applyMutation(
 }
 
 pub fn recordsetExecute(self: *RecordsetState, allocator: std.mem.Allocator, args: []const value.Value) anyerror!void {
+    try self.connection.ensureFresh(allocator);
     clearRows(allocator, &self.rows);
     self.position = -1;
     try evaluateSelect(allocator, &self.connection.db, self.sql, args, &self.rows);
@@ -820,6 +902,7 @@ pub fn recordsetNext(self: *RecordsetState) void {
     if (self.position < @as(isize, @intCast(self.rows.items.len))) {
         self.position += 1;
     }
+    self.connection.touch(dbspec.currentUnixSeconds());
 }
 
 pub fn recordsetCount(self: *const RecordsetState) i64 {
@@ -844,6 +927,7 @@ pub fn recordsetFieldValue(self: *const RecordsetState, prop: []const u8) value.
 }
 
 pub fn ddlExecute(self: *DdlState, allocator: std.mem.Allocator, args: []const value.Value) anyerror!void {
+    try self.connection.ensureFresh(allocator);
     try applyMutation(allocator, &self.connection.db, self.sql, args);
 }
 
@@ -851,7 +935,7 @@ pub fn deinitObject(allocator: std.mem.Allocator, object: value.ObjectValue) voi
     switch (object.kind) {
         .connection => {
             const state = @as(*ConnectionState, @ptrCast(@alignCast(object.ptr)));
-            state.db.deinit(allocator);
+            state.deinit(allocator);
             allocator.destroy(state);
         },
         .recordset => {
@@ -866,6 +950,7 @@ pub fn deinitObject(allocator: std.mem.Allocator, object: value.ObjectValue) voi
             allocator.free(state.sql);
             allocator.destroy(state);
         },
+        .array, .map => {},
         .file => {},
     }
 }

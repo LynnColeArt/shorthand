@@ -1,0 +1,132 @@
+<~
+header("Content-Type", "text/html; charset=utf-8")
+facts = new Array(
+    "Apache virtual host",
+    "ShortHand CGI",
+    "shebang launch",
+    "arrays",
+    "maps",
+    "regex",
+    "cookies",
+)
+meta = new Map(
+    "runtime", "ShortHand",
+    "host", "Apache 2.4",
+    "mode", "CGI",
+)
+~>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= meta["runtime"] %> on <%= meta["host"] %></title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f0e8;
+      --ink: #1f2328;
+      --muted: #59636e;
+      --card: #fffaf2;
+      --accent: #8a4f2d;
+      --line: #d9c8b7;
+    }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background: linear-gradient(180deg, #f7f2ea, #efe4d5);
+      color: var(--ink);
+    }
+    main {
+      max-width: 760px;
+      margin: 4rem auto;
+      padding: 2rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(73, 42, 21, 0.08);
+      padding: 2rem;
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(2.4rem, 6vw, 4.4rem);
+      line-height: 0.95;
+    }
+    .lede {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+    ul {
+      padding-left: 1.25rem;
+      line-height: 1.7;
+    }
+    code {
+      background: #f4e9dd;
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.35rem;
+    }
+    .meta {
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--line);
+      padding-top: 1rem;
+      color: var(--muted);
+      display: grid;
+      gap: 0.35rem;
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+      gap: 0.75rem;
+      margin: 1.25rem 0 1.5rem;
+    }
+    .actions a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.75rem;
+      padding: 0.6rem 1rem;
+      border-radius: 999px;
+      background: rgba(138, 77, 45, 0.08);
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+      border: 1px solid rgba(138, 77, 45, 0.16);
+    }
+    .tag {
+      color: var(--accent);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <p class="tag">Local browser demo</p>
+      <h1><%= meta["runtime"] %> lives again.</h1>
+      <p class="lede">This virtual host is running the ShortHand runtime through Apache CGI.</p>
+      <div class="actions">
+        <a href="/counter.short">Cookie counter</a>
+        <a href="/echo.short">POST echo</a>
+        <a href="/redirect.short">Redirect bounce</a>
+        <a href="/search.short">Regex search</a>
+      </div>
+      <ul>
+        <~ for i = 1 to size(facts) ~>
+        <li><%= facts[i] %></li>
+        <~ end for ~>
+      </ul>
+      <div class="meta">
+        <div><strong>Host:</strong> <%= meta["host"] %></div>
+        <div><strong>Mode:</strong> <%= meta["mode"] %></div>
+        <div><strong>URL:</strong> <code>http://shorthand.localhost:18081/</code></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

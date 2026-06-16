@@ -3,6 +3,8 @@
 This directory republishes the archived CHM help manual as Markdown.
 Every original HTML or HTM topic has a Markdown sibling here, and the sections below point to the main entry pages.
 
+For the current Zig runtime surface and non-archived features, see [../features.md](../features.md).
+
 ## Start Here
 
 - [ShortHand Manual](title.md)

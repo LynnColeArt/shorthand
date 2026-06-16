@@ -1,0 +1,37 @@
+# Local Apache config template for ShortHand CGI testing.
+# The harness fills in:
+# __SERVER_ROOT__
+# __DOCROOT__
+# __PORT__
+# __USER__
+# __GROUP__
+
+ServerRoot "__SERVER_ROOT__"
+Listen 127.0.0.1:__PORT__
+ServerName 127.0.0.1
+PidFile "__SERVER_ROOT__/httpd.pid"
+ErrorLog "__SERVER_ROOT__/logs/error.log"
+CustomLog "__SERVER_ROOT__/logs/access.log" combined
+DocumentRoot "__DOCROOT__"
+
+LoadModule mpm_event_module /usr/lib/apache2/modules/mod_mpm_event.so
+LoadModule authn_core_module /usr/lib/apache2/modules/mod_authn_core.so
+LoadModule authz_core_module /usr/lib/apache2/modules/mod_authz_core.so
+LoadModule authz_host_module /usr/lib/apache2/modules/mod_authz_host.so
+LoadModule alias_module /usr/lib/apache2/modules/mod_alias.so
+LoadModule env_module /usr/lib/apache2/modules/mod_env.so
+LoadModule mime_module /usr/lib/apache2/modules/mod_mime.so
+LoadModule dir_module /usr/lib/apache2/modules/mod_dir.so
+LoadModule cgi_module /usr/lib/apache2/modules/mod_cgi.so
+
+User __USER__
+Group __GROUP__
+
+TypesConfig /etc/mime.types
+AddHandler cgi-script .short
+
+<Directory "__DOCROOT__">
+    Require all granted
+    Options +ExecCGI
+    AllowOverride None
+</Directory>
