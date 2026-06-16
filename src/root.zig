@@ -1,0 +1,17 @@
+pub const project_name = "short";
+
+pub const cgi = @import("cgi.zig");
+pub const db = @import("db2.zig");
+pub const deployment = @import("deployment.zig");
+pub const ast = @import("ast.zig");
+pub const builtins = @import("builtins.zig");
+pub const date = @import("date.zig");
+pub const fileobj = @import("fileobj.zig");
+pub const lexer = @import("lexer.zig");
+pub const parser = @import("parser.zig");
+pub const request = @import("request.zig");
+pub const response = @import("response.zig");
+pub const regex = @import("regex.zig");
+pub const render = @import("render.zig");
+pub const runtime = @import("runtime.zig");
+pub const value = @import("value.zig");
