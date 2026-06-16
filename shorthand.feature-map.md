@@ -171,6 +171,7 @@ Database methods and properties worth preserving:
 - `Connection(...)` immediately attempts to connect
 - Connections track open/last-used time and can auto-refresh when idle or too old
 - `Connection.backend`, `Connection.opened`, `Connection.last_used`, `Connection.last_refresh`, `Connection.refresh_count`, and `Connection.stale`
+- `Connection(driver, connection string)` records the requested backend label and policy hints for future adapters
 - `RecordSet.execute()`, `next()`, `more()`, `rownum()`, `count()`, `eof()`, `value()`
 - `DDL.execute()`
 - `RecordSet.statement` and `DDL.statement`
@@ -208,6 +209,7 @@ Key database behaviors:
 - `Connection` objects are constructed with a driver name and connection string
 - Connection lifetimes are backend-managed, with idle/max-age policy parsed from the connection string when present
 - Connection status is script-visible for debugging and diagnostics
+- The current build still uses the bundled compatibility backend, but the connection contract is shaped for SQLite, ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters later
 - `RecordSet` is for statements that return rows
 - `DDL` is for statements that do not return rows
 - Parameter substitution supports:

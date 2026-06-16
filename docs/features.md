@@ -59,8 +59,14 @@ The runtime currently ships with the familiar helper set from the manual, plus t
 - Apache and Aprelium/Abyss are first-class deployment targets
 - `header()`, `SetCookie()`, and `redirect()` still obey response timing rules
 - Strict mode hardens response-boundary coercion
-- Database connections keep their own lifecycle metadata, so backends can refresh long-lived sessions automatically
+
+## Data Layer
+
+- `Connection(driver, connection_string)` records the requested driver name and connection string
+- The connection string can carry lifecycle policy hints like `backend=`, `driver=`, `auto_refresh=`, `reconnect=`, `idle_timeout=`, and `max_age=`
 - `Connection.backend`, `Connection.opened`, `Connection.last_used`, `Connection.last_refresh`, `Connection.refresh_count`, and `Connection.stale` expose that lifecycle state to scripts
+- `RecordSet.execute()` and `DDL.execute()` consult the connection freshness contract before they run
+- The current build still uses the bundled legacy compatibility backend; the interface is shaped so SQLite, ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters can plug in later
 
 ## Objects
 

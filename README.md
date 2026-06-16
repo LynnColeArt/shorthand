@@ -17,7 +17,9 @@ The original ShortHand was built to make web scripting easier to learn, easier t
 That combination made it practical for the kind of small, fast-moving web apps that were common in the early 2000s. This repo keeps that spirit, but in a form that is easier to read, test, and evolve.
 
 Connections in the revival still look like the old objects from script, but the runtime now tracks their open and last-used times so the backend can refresh long-lived sessions on its own.
+
 You can also inspect `Connection.backend`, `Connection.opened`, `Connection.last_used`, `Connection.last_refresh`, `Connection.refresh_count`, and `Connection.stale` from scripts when you want to see what the backend is doing.
+The current build still uses the bundled legacy compatibility backend, but it preserves the driver name, connection string, and lifecycle policy so future SQLite, ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters can fit behind the same ShortHand surface.
 
 ## What We Kept
 
@@ -34,6 +36,7 @@ You can also inspect `Connection.backend`, `Connection.opened`, `Connection.last
 - The interpreter is written in Zig instead of Flex/Bison plus C/C++
 - The runtime is structured around explicit request, response, and deployment state
 - The data layer keeps backend-agnostic connection metadata and refresh policy in the runtime
+- The active build still uses the bundled compatibility backend, while the runtime keeps backend-agnostic connection metadata and refresh policy ready for future adapters
 - Strict mode is opt-in and preserves legacy loose coercion by default
 - Regex helpers are available as part of the runtime
 - The file object, dates, text helpers, numeric helpers, container helpers, and database layer are all being rebuilt against the manual
