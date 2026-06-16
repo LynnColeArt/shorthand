@@ -33,6 +33,15 @@ fn compilePattern(pattern: []const u8) Error!*pcre2_code {
     return code;
 }
 
+pub fn isValid(pattern: []const u8) Error!bool {
+    const code = compilePattern(pattern) catch |err| switch (err) {
+        error.InvalidPattern => return false,
+        else => return err,
+    };
+    defer c.pcre2_code_free_8(code);
+    return true;
+}
+
 fn appendCapture(
     out: *std.ArrayList(u8),
     allocator: std.mem.Allocator,

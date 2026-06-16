@@ -1,0 +1,183 @@
+<~
+header("Content-Type", "text/html; charset=utf-8")
+header("Cache-Control", "no-store, max-age=0")
+header("Pragma", "no-cache")
+header("X-ShortHand", "regex-search")
+raw_term = q("term")
+term = urldecode(raw_term)
+if len(term) = 0 then
+    term = "(?i)cookie|regex|apache|redirect|echo|shorthand"
+end if
+safe_term = replace(replace(replace(replace(term, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "'", "&#39;")
+catalog = new Array(
+    "Apache virtual host",
+    "Cookie counter",
+    "POST echo",
+    "Redirect bounce",
+    "Regex search",
+    "Manual-driven runtime",
+    "ShortHand revival",
+)
+pattern_valid = regexvalid(term)
+matches = 0
+pattern_status = "invalid"
+result_rows = ""
+empty_note = ""
+if pattern_valid then
+    pattern_status = "valid"
+    for i = 1 to size(catalog)
+        if regexmatch(term, catalog[i]) then
+            matches = matches + 1
+            result_rows = result_rows & "<li><span class=\"hit\">" & catalog[i] & "</span> <code>" & regexextract(term, catalog[i]) & "</code></li>"
+        end if
+    end for
+    if matches = 0 then
+        empty_note = "<div>No matches found.</div>"
+    end if
+else
+    result_rows = "<li>ShortHand could not compile the pattern, so the search was skipped.</li>"
+end if
+~>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShortHand regex search</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f2eb;
+      --ink: #1e2228;
+      --muted: #5e6571;
+      --card: #fffdf7;
+      --accent: #0f766e;
+      --line: #d7d1c5;
+    }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 32%),
+        linear-gradient(180deg, #f8f5ef, #ece6d8);
+      color: var(--ink);
+    }
+    main {
+      max-width: 820px;
+      margin: 4rem auto;
+      padding: 2rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(36, 58, 56, 0.09);
+      padding: 2.25rem;
+    }
+    .tag {
+      margin: 0 0 0.75rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      line-height: 0.95;
+    }
+    .lede {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+    form {
+      display: grid;
+      gap: 0.9rem;
+      margin: 1.5rem 0;
+    }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.95rem 1rem;
+      font: inherit;
+      box-sizing: border-box;
+      background: #fff;
+      color: var(--ink);
+    }
+    button {
+      justify-self: start;
+      border: 0;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      padding: 0.85rem 1.35rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    ul {
+      margin: 1.5rem 0 0;
+      padding-left: 1.25rem;
+      line-height: 1.7;
+    }
+    li {
+      margin: 0.45rem 0;
+    }
+    code {
+      background: #ecf7f5;
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.35rem;
+    }
+    .meta {
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--line);
+      padding-top: 1rem;
+      color: var(--muted);
+    }
+    a {
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(15, 118, 110, 0.35);
+    }
+    .actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    .hit {
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <p class="tag">Regex demo</p>
+      <h1>Search with a pattern.</h1>
+      <p class="lede">Type a regular expression and ShortHand will tell you whether it compiles, then filter a small catalog of demo phrases with <code>regexmatch()</code> and <code>regexextract()</code>.</p>
+      <form method="get" action="/search.short">
+        <input type="text" name="term" placeholder="Try cookie|regex|apache">
+        <button type="submit">Search</button>
+      </form>
+      <div class="actions">
+        <a href="/">Back to the demo hub</a>
+      </div>
+      <ul>
+        <%= result_rows %>
+      </ul>
+      <div class="meta">
+        <div><strong>Pattern:</strong> <code><%= safe_term %></code></div>
+        <div><strong>Pattern status:</strong> <%= pattern_status %></div>
+        <div><strong>Matches:</strong> <%= matches %></div>
+        <%= empty_note %>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

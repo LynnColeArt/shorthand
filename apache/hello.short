@@ -1,0 +1,4 @@
+<~
+header("X-ShortHand", "apache")
+~>
+Hello from Apache and ShortHand

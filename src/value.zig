@@ -15,6 +15,8 @@ pub const ObjectKind = enum {
     recordset,
     ddl,
     file,
+    array,
+    map,
 };
 
 pub const ObjectValue = struct {

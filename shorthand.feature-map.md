@@ -60,6 +60,9 @@ Objects:
 - `NEW ObjectType(...)`
 - Methods called with dot syntax
 - Properties are mutable where the object docs allow it
+- `[]` is the only indexing syntax
+- Dense arrays are 1-based
+- Associative maps use string keys
 
 ## Data Model
 
@@ -68,13 +71,13 @@ Types documented by the manual:
 - Strings
 - Dates
 - Objects
-- Numbered arrays
-- Hash arrays
+- Dense arrays
+- Associative maps
 - NULL
 
 Important behavior notes:
 - Variables are case-insensitive
-- Hash keys are case-sensitive
+- Map keys are case-sensitive
 - Object and method names are case-insensitive in practice
 - `NULL` behaves like empty string in string context, `0` in numeric context, and `FALSE` in boolean context
 - The docs say strings are not Unicode / multibyte aware
@@ -99,9 +102,10 @@ String / text:
 - `float(number, spaces)` in the older docs, with a doc page that looks inconsistent
 - `format(number, precision)`
 - `replace(source, pattern, replacement)`
-- `regexmatch(pattern, subject)` as a modern extension
-- `regexreplace(pattern, replacement, subject)` as a modern extension
-- `regexextract(pattern, subject, [group])` as a modern extension
+- `regexmatch(pattern, subject)`
+- `regexvalid(pattern)`
+- `regexreplace(pattern, replacement, subject)`
+- `regexextract(pattern, subject, [group])`
 - `translate(source, ch1, ch2)`
 - `strpos(source, pattern)`
 - `substring(source, start, [length])`
@@ -124,6 +128,21 @@ Numeric helpers:
 - `rand()`
 - `rand(maximum)`
 - `rand(minimum, maximum)`
+
+Container helpers:
+- `allocated(value)`
+- `size(value)`
+- `shape(array)`
+- `lbound(array)`
+- `ubound(array)`
+- `keys(map)`
+- `values(container)`
+- `contains(container, keyOrValue)`
+- `remove(map, key)`
+- `move_alloc(from, to)`
+- `reshape(array, shape, [fill])`
+- `pack(array, mask)`
+- `unpack(vector, mask, fields)`
 
 File helpers:
 - `FileExists(name)`
@@ -150,6 +169,9 @@ File object constructor and properties:
 
 Database methods and properties worth preserving:
 - `Connection(...)` immediately attempts to connect
+- Connections track open/last-used time and can auto-refresh when idle or too old
+- `Connection.backend`, `Connection.opened`, `Connection.last_used`, `Connection.last_refresh`, `Connection.refresh_count`, and `Connection.stale`
+- `Connection(driver, connection string)` records the requested backend label and policy hints for future adapters
 - `RecordSet.execute()`, `next()`, `more()`, `rownum()`, `count()`, `eof()`, `value()`
 - `DDL.execute()`
 - `RecordSet.statement` and `DDL.statement`
@@ -185,6 +207,9 @@ Manual coverage is centered on MySQL, with later ODBC support.
 
 Key database behaviors:
 - `Connection` objects are constructed with a driver name and connection string
+- Connection lifetimes are backend-managed, with idle/max-age policy parsed from the connection string when present
+- Connection status is script-visible for debugging and diagnostics
+- The current build still uses the bundled compatibility backend, but the connection contract is shaped for SQLite, ShovelerDB, PostgreSQL, MySQL, ODBC, and Mongo adapters later
 - `RecordSet` is for statements that return rows
 - `DDL` is for statements that do not return rows
 - Parameter substitution supports:
@@ -259,10 +284,10 @@ If we reimplement this, the order I would preserve is:
 6. Deployment adapters and environment integration, including Aprelium/Abyss
 7. Modern safety improvements as opt-in features, not defaults
 
-Modern safety features worth separating from core semantics:
+Runtime features worth tracking separately from archived semantics:
 - Optional strict typing for coercion-heavy code paths
 - Safer HTML, header, and cookie emission boundaries
-- Regex as an extension API rather than a silent replacement for string helpers
+- Regex helpers as a separate feature rather than a silent replacement for string helpers
 - Regex extraction helpers that return the first match or a named/numbered capture
 
 ## Manual Quirks To Treat Carefully

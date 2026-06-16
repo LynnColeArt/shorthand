@@ -12,12 +12,23 @@ const TagInfo = struct {
     close: []const u8,
 };
 
+fn stripShebang(source: []const u8) []const u8 {
+    if (source.len < 2 or source[0] != '#' or source[1] != '!') return source;
+    var i: usize = 2;
+    while (i < source.len and source[i] != '\n' and source[i] != '\r') : (i += 1) {}
+    if (i < source.len and source[i] == '\r' and i + 1 < source.len and source[i + 1] == '\n') {
+        return source[i + 2 ..];
+    }
+    if (i < source.len) return source[i + 1 ..];
+    return source[source.len..];
+}
+
 pub const Lexer = struct {
     source: []const u8,
     index: usize = 0,
 
     pub fn init(source: []const u8) Lexer {
-        return .{ .source = source };
+        return .{ .source = stripShebang(source) };
     }
 
     pub fn reset(self: *Lexer) void {

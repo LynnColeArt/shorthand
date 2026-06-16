@@ -1,0 +1,87 @@
+<~
+header("Content-Type", "text/html; charset=utf-8")
+header("Cache-Control", "no-store, max-age=0")
+header("Pragma", "no-cache")
+~>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShortHand redirect complete</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4efe7;
+      --ink: #241f1a;
+      --muted: #625a50;
+      --card: #fffaf4;
+      --accent: #b85d3a;
+      --line: #d9c8b9;
+    }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at bottom left, rgba(184, 93, 58, 0.12), transparent 34%),
+        linear-gradient(180deg, #f8f2ea, #efe3d1);
+      color: var(--ink);
+    }
+    main {
+      max-width: 720px;
+      margin: 4rem auto;
+      padding: 2rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(91, 59, 38, 0.1);
+      padding: 2.25rem;
+    }
+    .tag {
+      margin: 0 0 0.75rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: clamp(2.6rem, 8vw, 5rem);
+      line-height: 0.95;
+    }
+    p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.65;
+    }
+    a {
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(184, 93, 58, 0.35);
+    }
+    .actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <p class="tag">Redirect complete</p>
+      <h1>Now we’re here.</h1>
+      <p>The redirect landed successfully, so this message only appears after Apache follows the 302.</p>
+      <div class="actions">
+        <a href="/redirect.short">Bounce again</a>
+        <a href="/">Back to the demo hub</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
